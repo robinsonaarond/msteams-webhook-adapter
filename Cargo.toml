@@ -1,0 +1,20 @@
+[package]
+name = "lessons"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-secretsmanager = { version = "1", features = ["behavior-version-latest"] }
+axum = "0.7.5"
+mockito = "1.1.0"
+reqwest = { version = "0.12.4", features = ["json"] }
+serde = { version = "1.0.198", features = ["derive"] }
+serde_json = "1.0.116"
+tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
+tower = "0.4.13"
+
+[dev-dependencies]
+wiremock = "0.4"
