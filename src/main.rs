@@ -22,7 +22,7 @@ use snitch::DmsData;
 
 use crate::adaptive_card::AdaptiveCardData;
 
-const MOXI_BASE_URL: &'static str = "https://moxiworks.webhook.office.com/webhookb2/";
+const MOXI_BASE_URL: &'static str = "https://<yoursite>.webhook.office.com/webhookb2/";
 
 #[derive(Clone)]
 struct TeamsChannelUrl {
@@ -382,7 +382,7 @@ mod moar_tests {
         //let _ = make_post_request(server.url(), PostData { text: "asdf".to_string() }).await;
 
         // Create a request
-        let webhook_end = "c982b5ff-509e-4f24-8b49-fada5b4a6df2@153c6642-8ba2-425e-a3b3-874330d2a4d6/IncomingWebhook/ea35a4bb76614ff4a81944e09afe0cf6/037b5484-e408-44c5-990c-8f1e83dbf068";
+        let webhook_end = "<whateveryouneedhere>";
         let request_body = serde_json::json!({
             "text": "Whatever"
         });
