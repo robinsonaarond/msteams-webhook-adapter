@@ -19,11 +19,10 @@ use buildkite::BuildData;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use snitch::DmsData;
-//use serde_json::Value;
 
-use crate::adaptive_card::send_adaptive_card;
+use crate::adaptive_card::AdaptiveCardData;
 
-const BASE_URL: &'static str = "https://your-company.webhook.office.com/webhookb2/";
+const MOXI_BASE_URL: &'static str = "https://moxiworks.webhook.office.com/webhookb2/";
 
 #[derive(Clone)]
 struct TeamsChannelUrl {
@@ -39,15 +38,9 @@ struct AppState {
     api_key: String,
 }
 
-// TODO: Need to implement apiKey instead of api_key
-// #[derive(Deserialize)]
-// struct QueryApiKey {
-//     #[serde(rename = "apiKey")]
-//     api_key: String,
-// }
-
 #[derive(Deserialize)]
 struct QueryParams {
+    #[serde(rename = "apiKey")]
     api_key: Option<String>,
     channel: Option<String>,
 }
@@ -95,7 +88,8 @@ async fn process_standard_webhook(url: String, data_object: PostData) {
 }
 
 async fn process_adaptivecard_webhook(url: String, data_object: BuildData) {
-    let _res = send_adaptive_card(url, data_object).await;
+    let adaptive_card_data: AdaptiveCardData = data_object.into();
+    let _res = make_post_request(url, adaptive_card_data).await;
 }
 
 fn get_webhook_url(channels: Vec<TeamsChannelUrl>, channel: String) -> String {
@@ -121,21 +115,14 @@ fn build_dms_post_data(data_object: DmsData) -> PostData {
     PostData { text: data_string }
 }
 
-//fn teams_urls_to_array(channels:&Vec<TeamsChannelUrl>) -> Vec<String> {
 fn teams_urls_to_array(channels: &[TeamsChannelUrl]) -> Vec<String> {
     channels
         .into_iter()
         .map(|channel| {
-            let parts: Vec<&str> = channel.url.split(BASE_URL).collect();
+            let parts: Vec<&str> = channel.url.split(MOXI_BASE_URL).collect();
             parts[1].to_string()
         })
         .collect()
-    //let mut urls = Vec::new();
-    //for channel in channels {
-    //    let parts: Vec<&str> = channel.url.split(BASE_URL).collect();
-    //    urls.push(parts[1].to_string());
-    //}
-    //urls
 }
 
 async fn handle_webhook(
@@ -150,15 +137,24 @@ async fn handle_webhook(
         println!("API Key matches. Processing...");
         match data {
             WebhookData::TypeA(build_data) => process_adaptivecard_webhook(url, build_data).await,
-            _ => return Err(StatusCode::BAD_REQUEST),
+            //_ => return Err(StatusCode::BAD_REQUEST),
+            _ => {
+                return Err(Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Body::from("Invalid unsupported data type."))
+                    .unwrap())
+            }
         }
+        Ok(Response::builder()
+            .status(200)
+            .body(Body::from("Webhook processed\n"))
+            .unwrap())
     } else {
-        println!("API Key mismatch.");
+        Err(Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .body(Body::from("API Key Mismatch\n"))
+            .unwrap())
     }
-    Ok(Response::builder()
-        .status(200)
-        .body(Body::from("Webhook processed\n"))
-        .unwrap())
 }
 
 async fn handle_webhookb2(
@@ -172,7 +168,6 @@ async fn handle_webhookb2(
     if whitelist.contains(&webhook_path.to_string()) {
         println!("Path matches whitelist. Processing...");
         // If we have a channel=asfgasg on the query, prefer that
-        //let url = BASE_URL.to_owned() + &webhook_path;
         let url = state.base_url.to_owned() + &webhook_path;
 
         match data {
@@ -257,7 +252,7 @@ async fn build_app_state(base_url: String) -> AppState {
     let whitelist = teams_urls_to_array(&channels);
     AppState {
         whitelist: whitelist,
-        api_key: env::var("API_KEY").unwrap_or("somethinggood".to_string()),
+        api_key: env::var("API_KEY").unwrap_or("s5q35nsdsgFDSbrKRj34TYT542mmNn3b4".to_string()),
         base_url,
         channels,
     }
@@ -276,7 +271,7 @@ fn new_app(app_state: AppState) -> Router {
 #[tokio::main]
 async fn main() {
     // Build list of webhook paths that we're willing to process
-    let app_state = build_app_state(BASE_URL.to_string()).await;
+    let app_state = build_app_state(MOXI_BASE_URL.to_string()).await;
     // build our application with a single route
     let app = new_app(app_state);
     //.route("/webhook", post(handle_webhook))
@@ -387,7 +382,7 @@ mod moar_tests {
         //let _ = make_post_request(server.url(), PostData { text: "asdf".to_string() }).await;
 
         // Create a request
-        let webhook_end = "actual_webhook";
+        let webhook_end = "c982b5ff-509e-4f24-8b49-fada5b4a6df2@153c6642-8ba2-425e-a3b3-874330d2a4d6/IncomingWebhook/ea35a4bb76614ff4a81944e09afe0cf6/037b5484-e408-44c5-990c-8f1e83dbf068";
         let request_body = serde_json::json!({
             "text": "Whatever"
         });

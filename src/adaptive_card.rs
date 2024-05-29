@@ -1,12 +1,99 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{buildkite::BuildData, make_post_request};
+use crate::buildkite::BuildData;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct AdaptiveCardData {
+pub struct AdaptiveCardData {
     #[serde(rename = "type")]
     data_type: String,
     attachments: Vec<Attachment>,
+}
+
+impl From<BuildData> for AdaptiveCardData {
+    fn from(data: BuildData) -> Self {
+        let sender_name: &String = &data.sender_name;
+
+        let adaptive_card_data = AdaptiveCardData {
+            data_type: "message".to_string(),
+            attachments: vec![Attachment {
+                content_type: "application/vnd.microsoft.card.adaptive".to_string(),
+                content_url: "none".to_string(),
+                content: Content {
+                    content_type: "AdaptiveCard".to_string(),
+                    schema: "http://adaptivecards.io/schemas/adaptive-card.json".to_string(),
+                    version: "1.5".to_string(),
+                    body: vec![
+                        BodyItem::TextBlock(TextBlock {
+                            size: Some("medium".to_string()),
+                            weight: "Bolder".to_string(),
+                            text: format!(
+                                "{} #{} {:?}",
+                                data.pipeline.name, data.build.number, data.build.state
+                            ),
+                            color: "Good".to_string(),
+                            wrap: None,
+                            ..Default::default()
+                        }),
+                        BodyItem::ColumnSet(ColumnSet {
+                            columns: vec![
+                                Column {
+                                    column_type: "Column".to_string(),
+                                    items: vec![ColumnItem::Image(Image {
+                                        style: "person".to_string(),
+                                        url: data.creator_avatar,
+                                        alt_text: sender_name.to_string(),
+                                        size: "small".to_string(),
+                                    })],
+                                    width: "auto".to_string(),
+                                },
+                                Column {
+                                    column_type: "Column".to_string(),
+                                    items: vec![
+                                        ColumnItem::TextBlock(TextBlock {
+                                            weight: "Bolder".to_string(),
+                                            text: sender_name.to_string(),
+                                            wrap: Some(true),
+                                            ..Default::default()
+                                        }),
+                                        ColumnItem::TextBlock(TextBlock {
+                                            text: format!("Created {}", data.build.created_at),
+                                            is_subtle: Some(true),
+                                            spacing: "none".to_string(),
+                                            wrap: Some(true),
+                                            ..Default::default()
+                                        }),
+                                    ],
+                                    width: "stretch".to_string(),
+                                },
+                            ],
+                        }),
+                        BodyItem::TextBlock(TextBlock {
+                            text: format!("Repository: {}", data.pipeline.repository),
+                            is_subtle: Some(true),
+                            font_type: "Monospace".to_string(),
+                            size: Some("small".to_string()),
+                            wrap: Some(true),
+                            ..Default::default()
+                        }),
+                        BodyItem::TextBlock(TextBlock {
+                            text: format!("Commit: {}", data.build.commit),
+                            is_subtle: Some(true),
+                            font_type: "Monospace".to_string(),
+                            size: Some("small".to_string()),
+                            wrap: Some(true),
+                            ..Default::default()
+                        }),
+                    ],
+                    actions: vec![Action {
+                        action_type: "Action.OpenUrl".to_string(),
+                        title: "View in Buildkite".to_string(),
+                        url: format!("{}/builds/{}", data.pipeline.web_url, data.build.number),
+                    }],
+                },
+            }],
+        };
+        adaptive_card_data
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -120,92 +207,4 @@ struct Action {
     action_type: String,
     title: String,
     url: String,
-}
-
-pub async fn send_adaptive_card(url: String, data: BuildData) {
-    let sender_name: &String = &data.sender_name;
-
-    let adaptive_card_data = AdaptiveCardData {
-        data_type: "message".to_string(),
-        attachments: vec![Attachment {
-            content_type: "application/vnd.microsoft.card.adaptive".to_string(),
-            content_url: "none".to_string(),
-            content: Content {
-                content_type: "AdaptiveCard".to_string(),
-                schema: "http://adaptivecards.io/schemas/adaptive-card.json".to_string(),
-                version: "1.5".to_string(),
-                body: vec![
-                    BodyItem::TextBlock(TextBlock {
-                        size: Some("medium".to_string()),
-                        weight: "Bolder".to_string(),
-                        text: format!(
-                            "{} #{} {:?}",
-                            data.pipeline.name, data.build.number, data.build.state
-                        ),
-                        color: "Good".to_string(),
-                        wrap: None,
-                        ..Default::default()
-                    }),
-                    BodyItem::ColumnSet(ColumnSet {
-                        columns: vec![
-                            Column {
-                                column_type: "Column".to_string(),
-                                items: vec![ColumnItem::Image(Image {
-                                    style: "person".to_string(),
-                                    url: data.creator_avatar,
-                                    alt_text: sender_name.to_string(),
-                                    size: "small".to_string(),
-                                })],
-                                width: "auto".to_string(),
-                            },
-                            Column {
-                                column_type: "Column".to_string(),
-                                items: vec![
-                                    ColumnItem::TextBlock(TextBlock {
-                                        weight: "Bolder".to_string(),
-                                        text: sender_name.to_string(),
-                                        wrap: Some(true),
-                                        ..Default::default()
-                                    }),
-                                    ColumnItem::TextBlock(TextBlock {
-                                        text: format!("Created {}", data.build.created_at),
-                                        is_subtle: Some(true),
-                                        spacing: "none".to_string(),
-                                        wrap: Some(true),
-                                        ..Default::default()
-                                    }),
-                                ],
-                                width: "stretch".to_string(),
-                            },
-                        ],
-                    }),
-                    BodyItem::TextBlock(TextBlock {
-                        text: format!("Repository: {}", data.pipeline.repository),
-                        is_subtle: Some(true),
-                        font_type: "Monospace".to_string(),
-                        size: Some("small".to_string()),
-                        wrap: Some(true),
-                        ..Default::default()
-                    }),
-                    BodyItem::TextBlock(TextBlock {
-                        text: format!("Commit: {}", data.build.commit),
-                        is_subtle: Some(true),
-                        font_type: "Monospace".to_string(),
-                        size: Some("small".to_string()),
-                        wrap: Some(true),
-                        ..Default::default()
-                    }),
-                ],
-                actions: vec![Action {
-                    action_type: "Action.OpenUrl".to_string(),
-                    title: "View in Buildkite".to_string(),
-                    url: format!("{}/builds/{}", data.pipeline.web_url, data.build.number),
-                }],
-            },
-        }],
-    };
-
-    //let serialized = serde_json::to_string_pretty(&adaptive_card_data).unwrap();
-    //println!("{}", serialized);
-    let _res = make_post_request(url, adaptive_card_data).await;
 }
