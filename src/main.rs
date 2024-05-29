@@ -22,7 +22,7 @@ use snitch::DmsData;
 
 use crate::adaptive_card::AdaptiveCardData;
 
-const MOXI_BASE_URL: &'static str = "https://<yoursite>.webhook.office.com/webhookb2/";
+const BASE_URL: &'static str = "https://<yoursite>.webhook.office.com/webhookb2/";
 
 #[derive(Clone)]
 struct TeamsChannelUrl {
@@ -119,7 +119,7 @@ fn teams_urls_to_array(channels: &[TeamsChannelUrl]) -> Vec<String> {
     channels
         .into_iter()
         .map(|channel| {
-            let parts: Vec<&str> = channel.url.split(MOXI_BASE_URL).collect();
+            let parts: Vec<&str> = channel.url.split(BASE_URL).collect();
             parts[1].to_string()
         })
         .collect()
@@ -252,7 +252,7 @@ async fn build_app_state(base_url: String) -> AppState {
     let whitelist = teams_urls_to_array(&channels);
     AppState {
         whitelist: whitelist,
-        api_key: env::var("API_KEY").unwrap_or("s5q35nsdsgFDSbrKRj34TYT542mmNn3b4".to_string()),
+        api_key: env::var("API_KEY").unwrap_or("<defaultapikey>".to_string()),
         base_url,
         channels,
     }
@@ -271,7 +271,7 @@ fn new_app(app_state: AppState) -> Router {
 #[tokio::main]
 async fn main() {
     // Build list of webhook paths that we're willing to process
-    let app_state = build_app_state(MOXI_BASE_URL.to_string()).await;
+    let app_state = build_app_state(BASE_URL.to_string()).await;
     // build our application with a single route
     let app = new_app(app_state);
     //.route("/webhook", post(handle_webhook))
